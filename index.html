@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HabitPulse - Interactive Habit Tracker</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for weekly analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Canvas Confetti for celebrating 100% daily goals -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Google Fonts: Inter & Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            dark: {
+              900: '#0F172A',
+              850: '#151F38',
+              800: '#1E293B',
+              700: '#334155',
+            },
+            brand: {
+              purple: '#8B5CF6',
+              cyan: '#06B6D4',
+              emerald: '#10B981',
+              rose: '#F43F5E',
+              amber: '#F59E0B'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Prompt', 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.45);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); }
+      50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.45); }
+    }
+    .glow-card {
+      animation: pulseGlow 4s infinite ease-in-out;
+    }
+    .check-bounce {
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .check-bounce:active {
+      transform: scale(0.9);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-purple-500 selection:text-white">
+
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/25 flex items-center justify-center">
+          <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center text-xl">
+            ⚡
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-xl tracking-tight text-white flex items-center gap-1.5">
+              Habit<span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Pulse</span>
+            </h1>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">Gamified v2</span>
+          </div>
+          <p id="currentDateDisplay" class="text-xs text-slate-400 font-normal">กำลังโหลดวันที่...</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Quick stats chip -->
+        <div class="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-850/90 border border-slate-800 text-sm font-medium">
+          <span class="text-amber-400 text-base">🔥</span>
+          <span class="text-slate-300">ความต่อเนื่องสูงสุด:</span>
+          <span id="headerBestStreak" class="font-bold text-amber-400">0 วัน</span>
+        </div>
+
+        <!-- Add Habit Button -->
+        <button id="openAddModalBtn" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:scale-95 transition-all shadow-md shadow-violet-600/30 text-white text-sm font-medium">
+          <i class="ph-bold ph-plus text-base"></i>
+          <span class="hidden xs:inline">เพิ่มนิสัย</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Top Hero Section: Progress Ring & Quick Stats -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Daily Completion Card with Radial Progress Ring -->
+      <div class="lg:col-span-1 bg-gradient-to-br from-slate-900 to-slate-850/80 border border-slate-800/90 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between">
+        <div class="absolute -right-8 -top-8 w-40 h-40 bg-violet-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-base font-semibold text-slate-200 flex items-center gap-2">
+            <i class="ph-fill ph-check-circle text-violet-400"></i>
+            เป้าหมายวันนี้
+          </h2>
+          <span id="dailyRatioBadge" class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-mono">0 / 0</span>
+        </div>
+
+        <div class="flex items-center justify-around py-2">
+          <!-- Circular SVG Progress Ring -->
+          <div class="relative flex items-center justify-center">
+            <svg class="w-36 h-36 transform -rotate-90">
+              <circle cx="72" cy="72" r="58" stroke="currentColor" stroke-width="12" class="text-slate-800" fill="transparent" />
+              <circle id="progressCircle" cx="72" cy="72" r="58" stroke="currentColor" stroke-width="12" 
+                class="text-violet-500 transition-all duration-700 ease-out" 
+                fill="transparent" 
+                stroke-dasharray="364.4" 
+                stroke-dashoffset="364.4" 
+                stroke-linecap="round" />
+            </svg>
+            <div class="absolute flex flex-col items-center justify-center text-center">
+              <span id="progressPercent" class="text-3xl font-extrabold text-white tracking-tight">0%</span>
+              <span class="text-[11px] text-slate-400 font-medium">สำเร็จแล้ว</span>
+            </div>
+          </div>
+
+          <!-- Motivational Message -->
+          <div class="max-w-[140px] space-y-2">
+            <div id="motivationalBadge" class="text-2xl">🌱</div>
+            <p id="motivationalText" class="text-xs text-slate-300 leading-snug">เริ่มต้นวันใหม่ด้วยการติ๊กก้าวแรกของคุณ!</p>
+          </div>
+        </div>
+
+        <!-- Linear Sub-bar for visual confirmation -->
+        <div class="mt-4 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+          <span>ความพยายามอย่างสม่ำเสมอ</span>
+          <span id="statusStreakSummary" class="text-violet-400 font-medium">ก้าวไปด้วยกัน ✨</span>
+        </div>
+      </div>
+
+      <!-- Middle Cards: Summary Metrics Grid -->
+      <div class="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4">
+        
+        <!-- Metric 1: Total Completed Today -->
+        <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-400">สำเร็จวันนี้</span>
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+              🎯
+            </div>
+          </div>
+          <div class="mt-4">
+            <span id="statCompletedToday" class="text-2xl sm:text-3xl font-bold text-white tracking-tight">0</span>
+            <span class="text-xs text-slate-400 ml-1">รายการ</span>
+          </div>
+          <p class="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
+            <i class="ph-bold ph-trend-up"></i> รายการนิสัยที่เคลียร์แล้ว
+          </p>
+        </div>
+
+        <!-- Metric 2: Active Streak -->
+        <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-400">สตรีคเฉลี่ยปัจจุบัน</span>
+            <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+              🔥
+            </div>
+          </div>
+          <div class="mt-4">
+            <span id="statAverageStreak" class="text-2xl sm:text-3xl font-bold text-amber-400 tracking-tight">0</span>
+            <span class="text-xs text-slate-400 ml-1">วันต่อเนื่อง</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">อย่าปล่อยให้ไฟดับลง!</p>
+        </div>
+
+        <!-- Metric 3: Total Habits Tracked -->
+        <div class="col-span-2 sm:col-span-1 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-400">นิสัยที่กำลังสร้าง</span>
+            <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg">
+              🚀
+            </div>
+          </div>
+          <div class="mt-4">
+            <span id="statTotalHabits" class="text-2xl sm:text-3xl font-bold text-cyan-400 tracking-tight">0</span>
+            <span class="text-xs text-slate-400 ml-1">เป้าหมาย</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Active routines</p>
+        </div>
+
+        <!-- Weekly Chart Mini-Section inside Hero -->
+        <div class="col-span-2 sm:col-span-3 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                <i class="ph-bold ph-chart-bar text-cyan-400"></i>
+                สถิติการทำต่อเนื่องรอบ 7 วัน (Weekly Consistency)
+              </h3>
+              <p class="text-xs text-slate-400">อัตราเปอร์เซ็นต์ความสำเร็จในแต่ละวัน</p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 font-mono font-medium">สัปดาห์นี้</span>
+          </div>
+          <div class="h-36 w-full">
+            <canvas id="weeklyChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Habits Management Section -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>รายการนิสัยประจำวัน</span>
+            <span id="habitCountBadge" class="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">0</span>
+          </h2>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scroll text-xs">
+          <button data-filter="all" class="filter-btn px-3 py-1.5 rounded-xl font-medium bg-purple-600 text-white transition-all">ทั้งหมด</button>
+          <button data-filter="health" class="filter-btn px-3 py-1.5 rounded-xl font-medium bg-slate-850 text-slate-400 hover:text-white transition-all">สุขภาพ</button>
+          <button data-filter="mind" class="filter-btn px-3 py-1.5 rounded-xl font-medium bg-slate-850 text-slate-400 hover:text-white transition-all">การเรียนรู้</button>
+          <button data-filter="work" class="filter-btn px-3 py-1.5 rounded-xl font-medium bg-slate-850 text-slate-400 hover:text-white transition-all">การงาน</button>
+          <button data-filter="completed" class="filter-btn px-3 py-1.5 rounded-xl font-medium bg-slate-850 text-slate-400 hover:text-white transition-all">สำเร็จแล้ว</button>
+        </div>
+      </div>
+
+      <!-- Habit Cards Grid -->
+      <div id="habitGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+
+      <!-- Empty State Indicator -->
+      <div id="emptyState" class="hidden flex-col items-center justify-center p-12 bg-slate-900/40 border border-dashed border-slate-800 rounded-3xl text-center space-y-3">
+        <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-3xl">
+          🪴
+        </div>
+        <h3 class="text-base font-semibold text-slate-200">ยังไม่มีนิสัยในหมวดหมู่นี้</h3>
+        <p class="text-xs text-slate-400 max-w-sm">เริ่มสร้างกิจวัตรใหม่ที่ทรงพลังได้ง่ายๆ เพียงกดปุ่ม "เพิ่มนิสัย" ด้านบน</p>
+        <button onclick="document.getElementById('openAddModalBtn').click()" class="mt-2 px-4 py-2 rounded-xl bg-violet-600/80 hover:bg-violet-600 text-white text-xs font-medium transition-all">
+          เพิ่มนิสัยแรกของคุณ
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Add New Habit -->
+  <div id="addHabitModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-all duration-300">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>✨ สร้างนิสัยใหม่</span>
+        </h3>
+        <button id="closeModalBtn" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-all">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <form id="addHabitForm" class="mt-5 space-y-4">
+        <!-- Title Input -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">ชื่อเป้าหมาย / นิสัย</label>
+          <input type="text" id="habitTitleInput" required placeholder="เช่น ดื่มน้ำ 2 ลิตร, อ่านหนังสือ 15 นาที" 
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all">
+        </div>
+
+        <!-- Emoji & Category row -->
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">อิโมจิ</label>
+            <input type="text" id="habitEmojiInput" value="💧" maxlength="4" 
+              class="w-full text-center px-3 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-white text-lg focus:outline-none focus:border-violet-500 transition-all">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">หมวดหมู่</label>
+            <select id="habitCategoryInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-white text-sm focus:outline-none focus:border-violet-500 transition-all">
+              <option value="health">สุขภาพ & ร่างกาย (Health)</option>
+              <option value="mind">พัฒนาตนเอง & จิตใจ (Mind)</option>
+              <option value="work">การงาน & วินัย (Work/Productivity)</option>
+              <option value="life">ไลฟ์สไตล์ (Lifestyle)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Target Frequency -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">เป้าหมายจำนวนวันต่อสัปดาห์</label>
+          <div class="flex items-center gap-3">
+            <input type="range" id="habitDaysTargetInput" min="1" max="7" value="7" class="w-full accent-violet-500">
+            <span id="targetDaysValue" class="text-sm font-bold text-violet-400 w-12 text-right">7 วัน</span>
+          </div>
+        </div>
+
+        <!-- Color Preset -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-2">ธีมสีการ์ด</label>
+          <div class="flex items-center gap-3">
+            <label class="cursor-pointer">
+              <input type="radio" name="habitColor" value="violet" checked class="sr-only peer">
+              <div class="w-7 h-7 rounded-full bg-violet-500 ring-2 ring-offset-2 ring-offset-slate-900 peer-checked:ring-violet-400 transition-all"></div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="habitColor" value="cyan" class="sr-only peer">
+              <div class="w-7 h-7 rounded-full bg-cyan-400 ring-2 ring-offset-2 ring-offset-slate-900 peer-checked:ring-cyan-400 transition-all"></div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="habitColor" value="emerald" class="sr-only peer">
+              <div class="w-7 h-7 rounded-full bg-emerald-400 ring-2 ring-offset-2 ring-offset-slate-900 peer-checked:ring-emerald-400 transition-all"></div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="habitColor" value="rose" class="sr-only peer">
+              <div class="w-7 h-7 rounded-full bg-rose-400 ring-2 ring-offset-2 ring-offset-slate-900 peer-checked:ring-rose-400 transition-all"></div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="habitColor" value="amber" class="sr-only peer">
+              <div class="w-7 h-7 rounded-full bg-amber-400 ring-2 ring-offset-2 ring-offset-slate-900 peer-checked:ring-amber-400 transition-all"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="pt-4 flex items-center justify-end gap-3">
+          <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition-all">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium text-sm transition-all shadow-lg shadow-violet-600/30">
+            บันทึกนิสัย
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 shadow-2xl text-sm font-medium text-white transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300">
+    <span id="toastIcon" class="text-xl">🎉</span>
+    <span id="toastMsg">บันทึกสำเร็จ</span>
+  </div>
+
+  <script>
+    // --- Initial State and LocalStorage Key ---
+    const STORAGE_KEY = 'habitpulse_data_v2';
+    let currentFilter = 'all';
+    let weeklyChartInstance = null;
+
+    // Helper: Formatted today key (YYYY-MM-DD)
+    const getTodayKey = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Default sample habits for new users
+    const defaultHabits = [
+      {
+        id: '1',
+        title: 'ดื่มน้ำสะอาด 2 ลิตร',
+        emoji: '💧',
+        category: 'health',
+        targetDays: 7,
+        color: 'cyan',
+        streak: 5,
+        history: {}
+      },
+      {
+        id: '2',
+        title: 'ออกกำลังกาย 30 นาที',
+        emoji: '🏃‍♂️',
+        category: 'health',
+        targetDays: 5,
+        color: 'rose',
+        streak: 3,
+        history: {}
+      },
+      {
+        id: '3',
+        title: 'อ่านหนังสือพัฒนาตนเอง',
+        emoji: '📖',
+        category: 'mind',
+        targetDays: 6,
+        color: 'violet',
+        streak: 12,
+        history: {}
+      },
+      {
+        id: '4',
+        title: 'จัดโต๊ะทำงานก่อนนอน',
+        emoji: '💻',
+        category: 'work',
+        targetDays: 5,
+        color: 'amber',
+        streak: 2,
+        history: {}
+      }
+    ];
+
+    // Initialize mock historical records for the last 6 days for rich charts
+    const populateInitialHistory = (habits) => {
+      const today = new Date();
+      habits.forEach(h => {
+        for (let i = 1; i <= 6; i++) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          // Add organic completion data
+          if (Math.random() > 0.35) {
+            h.history[k] = true;
+          }
+        }
+      });
+    };
+
+    // Load data from LocalStorage
+    let habitsData = [];
+    const loadData = () => {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          habitsData = JSON.parse(raw);
+        } catch (e) {
+          console.error("Error reading storage:", e);
+          habitsData = [...defaultHabits];
+          populateInitialHistory(habitsData);
+        }
+      } else {
+        habitsData = [...defaultHabits];
+        populateInitialHistory(habitsData);
+        saveData();
+      }
+    };
+
+    // Save data to LocalStorage
+    const saveData = () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(habitsData));
+      updateDashboard();
+    };
+
+    // Show Custom Toast (replaces alert)
+    const showToast = (message, icon = '✨') => {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+      
+      toastMsg.innerText = message;
+      toastIcon.innerText = icon;
+      toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+      }, 2600);
+    };
+
+    // Toggle Habit Status for today
+    window.toggleHabit = (id) => {
+      const today = getTodayKey();
+      const habit = habitsData.find(h => h.id === id);
+      if (!habit) return;
+
+      const wasDone = !!habit.history[today];
+      if (!wasDone) {
+        habit.history[today] = true;
+        habit.streak = (habit.streak || 0) + 1;
+        showToast(`ยินดีด้วย! บันทึก "${habit.title}" เรียบร้อยแล้ว`, '🔥');
+      } else {
+        delete habit.history[today];
+        habit.streak = Math.max(0, (habit.streak || 1) - 1);
+        showToast(`ยกเลิกการติ๊ก "${habit.title}"`, '↩️');
+      }
+
+      saveData();
+      checkAllCompletedCelebration();
+    };
+
+    // Delete Habit
+    window.deleteHabit = (id) => {
+      const target = habitsData.find(h => h.id === id);
+      if (!target) return;
+      
+      habitsData = habitsData.filter(h => h.id !== id);
+      saveData();
+      showToast(`ลบนิสัย "${target.title}" เรียบร้อยแล้ว`, '🗑️');
+    };
+
+    // Celebration Confetti when 100% daily goals reached
+    const checkAllCompletedCelebration = () => {
+      const today = getTodayKey();
+      if (habitsData.length === 0) return;
+      const completedCount = habitsData.filter(h => h.history[today]).length;
+      if (completedCount === habitsData.length && habitsData.length > 0) {
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      }
+    };
+
+    const colorClasses = {
+      violet: { border: 'border-violet-500/30', bg: 'bg-violet-500/10', text: 'text-violet-400', checkBg: 'bg-violet-600', ring: 'ring-violet-500' },
+      cyan: { border: 'border-cyan-500/30', bg: 'bg-cyan-500/10', text: 'text-cyan-400', checkBg: 'bg-cyan-600', ring: 'ring-cyan-500' },
+      emerald: { border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', text: 'text-emerald-400', checkBg: 'bg-emerald-600', ring: 'ring-emerald-500' },
+      rose: { border: 'border-rose-500/30', bg: 'bg-rose-500/10', text: 'text-rose-400', checkBg: 'bg-rose-600', ring: 'ring-rose-500' },
+      amber: { border: 'border-amber-500/30', bg: 'bg-amber-500/10', text: 'text-amber-400', checkBg: 'bg-amber-600', ring: 'ring-amber-500' },
+    };
+
+    const renderHabitList = () => {
+      const today = getTodayKey();
+      const habitGrid = document.getElementById('habitGrid');
+      const emptyState = document.getElementById('emptyState');
+      
+      let filtered = habitsData;
+      if (currentFilter === 'completed') {
+        filtered = habitsData.filter(h => h.history[today]);
+      } else if (currentFilter !== 'all') {
+        filtered = habitsData.filter(h => h.category === currentFilter);
+      }
+
+      document.getElementById('habitCountBadge').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        habitGrid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+        emptyState.classList.remove('flex');
+      }
+
+      habitGrid.innerHTML = filtered.map(habit => {
+        const isDone = !!habit.history[today];
+        const theme = colorClasses[habit.color] || colorClasses.violet;
+        
+        return `
+          <div class="relative group bg-slate-900/90 border ${isDone ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-800/90'} hover:border-slate-700/80 rounded-2xl p-5 transition-all duration-300 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-2xl ${theme.bg} ${theme.text} flex items-center justify-center text-2xl shadow-inner">
+                    ${habit.emoji || '🎯'}
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-sm sm:text-base text-slate-100 group-hover:text-white ${isDone ? 'line-through text-slate-400' : ''}">
+                      ${habit.title}
+                    </h4>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-xs text-slate-400 capitalize">#${habit.category}</span>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">${habit.targetDays || 7} วัน/สัปดาห์</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Delete Action -->
+                <button onclick="deleteHabit('${habit.id}')" title="ลบนิสัย" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800/80 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100">
+                  <i class="ph ph-trash text-base"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Bottom Action Row: Streak Counter and Check Button -->
+            <div class="mt-5 pt-3.5 border-t border-slate-800/60 flex items-center justify-between">
+              <!-- Streak Badge -->
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/10 text-amber-400">
+                  🔥
+                </span>
+                <span class="font-bold text-slate-200">${habit.streak || 0}</span>
+                <span class="text-slate-400">วันต่อเนื่อง</span>
+              </div>
+
+              <!-- Interactive Check Button -->
+              <button onclick="toggleHabit('${habit.id}')" 
+                class="check-bounce px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md ${
+                  isDone 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-slate-800 hover:bg-violet-600 text-slate-200 hover:text-white border border-slate-700/60'
+                }">
+                <i class="ph-bold ${isDone ? 'ph-check-circle text-emerald-400' : 'ph-circle'} text-base"></i>
+                <span>${isDone ? 'สำเร็จแล้ว' : 'ทำเสร็จ'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    const updateDashboard = () => {
+      const today = getTodayKey();
+      const total = habitsData.length;
+      const completed = habitsData.filter(h => h.history[today]).length;
+      const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+      // 1. Update Progress Ring
+      const circle = document.getElementById('progressCircle');
+      const radius = 58;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference - (percentage / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+      document.getElementById('progressPercent').innerText = `${percentage}%`;
+      document.getElementById('dailyRatioBadge').innerText = `${completed} / ${total}`;
+
+      // Update Motivational feedback
+      const motivationalBadge = document.getElementById('motivationalBadge');
+      const motivationalText = document.getElementById('motivationalText');
+      if (percentage === 100 && total > 0) {
+        motivationalBadge.innerText = '👑';
+        motivationalText.innerText = 'ยอดเยี่ยมมาก! วันนี้คุณพิชิตครบ 100% แล้ว!';
+      } else if (percentage >= 50) {
+        motivationalBadge.innerText = '⚡';
+        motivationalText.innerText = 'มาได้เกินครึ่งทางแล้ว ลุยต่ออีกนิด!';
+      } else if (completed > 0) {
+        motivationalBadge.innerText = '🚀';
+        motivationalText.innerText = 'จุดเริ่มต้นที่ดีมาก ก้าวต่อไปสู่เป้าหมาย';
+      } else {
+        motivationalBadge.innerText = '🌱';
+        motivationalText.innerText = 'เริ่มต้นวันใหม่ด้วยการติ๊กก้าวแรกของคุณ!';
+      }
+
+      // 2. Metrics summary
+      document.getElementById('statCompletedToday').innerText = completed;
+      document.getElementById('statTotalHabits').innerText = total;
+
+      const totalStreak = habitsData.reduce((acc, cur) => acc + (cur.streak || 0), 0);
+      const avgStreak = total > 0 ? (totalStreak / total).toFixed(1) : 0;
+      document.getElementById('statAverageStreak').innerText = avgStreak;
+
+      const maxStreak = habitsData.length > 0 ? Math.max(...habitsData.map(h => h.streak || 0)) : 0;
+      document.getElementById('headerBestStreak').innerText = `${maxStreak} วัน`;
+
+      renderHabitList();
+      renderWeeklyChart();
+    };
+
+    // Render Weekly Chart with Chart.js
+    const renderWeeklyChart = () => {
+      const ctx = document.getElementById('weeklyChart').getContext('2d');
+      const today = new Date();
+      
+      const labels = [];
+      const dataPoints = [];
+      const thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        labels.push(`${thaiDays[d.getDay()]} (${d.getDate()})`);
+
+        if (habitsData.length === 0) {
+          dataPoints.push(0);
+        } else {
+          const finished = habitsData.filter(h => h.history && h.history[key]).length;
+          const rate = Math.round((finished / habitsData.length) * 100);
+          dataPoints.push(rate);
+        }
+      }
+
+      if (weeklyChartInstance) {
+        weeklyChartInstance.data.labels = labels;
+        weeklyChartInstance.data.datasets[0].data = dataPoints;
+        weeklyChartInstance.update();
+      } else {
+        weeklyChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'ความสำเร็จ (%)',
+              data: dataPoints,
+              backgroundColor: dataPoints.map((val, idx) => idx === 6 ? '#8B5CF6' : '#334155'),
+              hoverBackgroundColor: '#A78BFA',
+              borderRadius: 8,
+              borderSkipped: false,
+              barThickness: 22
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1E293B',
+                titleColor: '#F8FAFC',
+                bodyColor: '#A78BFA',
+                padding: 10,
+                cornerRadius: 10,
+                callbacks: {
+                  label: (ctx) => `สำเร็จ: ${ctx.raw}%`
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                ticks: {
+                  color: '#94A3B8',
+                  font: { family: 'Prompt', size: 10 },
+                  callback: (value) => `${value}%`
+                }
+              },
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: '#94A3B8',
+                  font: { family: 'Prompt', size: 11 }
+                }
+              }
+            }
+          }
+        });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set Thai formatted date
+      const dateEl = document.getElementById('currentDateDisplay');
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      dateEl.innerText = now.toLocaleDateString('th-TH', options);
+
+      // Modal open/close logic
+      const modal = document.getElementById('addHabitModal');
+      const openBtn = document.getElementById('openAddModalBtn');
+      const closeBtn = document.getElementById('closeModalBtn');
+      const cancelBtn = document.getElementById('cancelModalBtn');
+
+      const openModal = () => {
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        document.getElementById('habitTitleInput').focus();
+      };
+
+      const closeModal = () => {
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modal.querySelector('.transform').classList.add('scale-95');
+        document.getElementById('addHabitForm').reset();
+        document.getElementById('targetDaysValue').innerText = '7 วัน';
+      };
+
+      openBtn.addEventListener('click', openModal);
+      closeBtn.addEventListener('click', closeModal);
+      cancelBtn.addEventListener('click', closeModal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      // Target days slider listener
+      const slider = document.getElementById('habitDaysTargetInput');
+      const targetVal = document.getElementById('targetDaysValue');
+      slider.addEventListener('input', (e) => {
+        targetVal.innerText = `${e.target.value} วัน`;
+      });
+
+      // Add Habit Form Submit
+      const form = document.getElementById('addHabitForm');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = document.getElementById('habitTitleInput').value.trim();
+        const emoji = document.getElementById('habitEmojiInput').value.trim() || '⭐';
+        const category = document.getElementById('habitCategoryInput').value;
+        const targetDays = parseInt(slider.value, 10);
+        const selectedColor = document.querySelector('input[name="habitColor"]:checked')?.value || 'violet';
+
+        if (!title) return;
+
+        const newHabit = {
+          id: Date.now().toString(),
+          title: title,
+          emoji: emoji,
+          category: category,
+          targetDays: targetDays,
+          color: selectedColor,
+          streak: 0,
+          history: {}
+        };
+
+        habitsData.unshift(newHabit);
+        saveData();
+        closeModal();
+        showToast(`เพิ่มนิสัย "${title}" เรียบร้อย!`, '🚀');
+      });
+
+      // Category filter buttons
+      const filterBtns = document.querySelectorAll('.filter-btn');
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterBtns.forEach(b => {
+            b.classList.remove('bg-purple-600', 'text-white');
+            b.classList.add('bg-slate-850', 'text-slate-400');
+          });
+          btn.classList.add('bg-purple-600', 'text-white');
+          btn.classList.remove('bg-slate-850', 'text-slate-400');
+
+          currentFilter = btn.dataset.filter;
+          renderHabitList();
+        });
+      });
+
+      // Initialize
+      loadData();
+      updateDashboard();
+    });
+  </script>
+</body>
+</html>
