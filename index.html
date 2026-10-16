@@ -24,10 +24,10 @@
         </div>
         <div>
           <h1 class="text-xl font-bold tracking-wide">Photo & Log Dashboard</h1>
-          <p class="text-xs text-slate-400">บันทึกรูปภาพ รายละเอียด และวันที่</p>
+          <p class="text-xs text-slate-400">บันทึกวันที่ รายละเอียด และรูปภาพ</p>
         </div>
       </div>
-      <button onclick="toggleModal(true)" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium transition shadow-lg shadow-blue-600/30 active:scale-95">
+      <button onclick="openCreateModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium transition shadow-lg shadow-blue-600/30 active:scale-95">
         <i data-lucide="plus" class="w-4 h-4"></i>
         <span>เพิ่มรายการใหม่</span>
       </button>
@@ -62,16 +62,16 @@
       </div>
     </div>
 
-    <!-- Data Table / Card Container -->
+    <!-- Data Table Container -->
     <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-700/80 bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <th class="py-4 px-6 w-36">Date (วันที่)</th>
-              <th class="py-4 px-6 w-44">Image (รูปภาพ)</th>
-              <th class="py-4 px-6">Detail (รายละเอียด)</th>
-              <th class="py-4 px-6 text-right w-24">จัดการ</th>
+              <th class="py-4 px-6 w-40">DATE (วันที่)</th>
+              <th class="py-4 px-6">DETAIL (รายละเอียด)</th>
+              <th class="py-4 px-6 w-44">IMAGE (รูปภาพ)</th>
+              <th class="py-4 px-6 text-right w-28">จัดการ</th>
             </tr>
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-800 text-sm">
@@ -89,11 +89,11 @@
     </div>
   </main>
 
-  <!-- Add Item Modal -->
+  <!-- Add / Edit Item Modal -->
   <div id="formModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
-        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+        <h3 id="modalTitle" class="text-lg font-bold text-slate-100 flex items-center gap-2">
           <i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i>
           เพิ่มบันทึกใหม่
         </h3>
@@ -103,18 +103,27 @@
       </div>
 
       <form id="recordForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
-        <!-- Date Column -->
+        <input type="hidden" id="editId" value="">
+
+        <!-- Date -->
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1.5">Date (วันที่) *</label>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">DATE (วันที่) *</label>
           <input type="date" id="inputDate" required
             class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
         </div>
 
-        <!-- Image Column -->
+        <!-- Detail -->
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1.5">Image (อัปโหลดรูปภาพ) *</label>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">DETAIL (รายละเอียด) *</label>
+          <textarea id="inputDetail" rows="3" required placeholder="ใส่คำอธิบาย บันทึก หรือรายละเอียดงาน..."
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+
+        <!-- Image -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">IMAGE (รูปภาพ) <span id="imageNotice" class="text-[10px] text-slate-500 font-normal"></span></label>
           <div class="border-2 border-dashed border-slate-700 hover:border-blue-500/70 rounded-xl p-4 text-center cursor-pointer transition relative bg-slate-950/50" onclick="document.getElementById('inputImage').click()">
-            <input type="file" id="inputImage" accept="image/*" required class="hidden" onchange="previewImage(event)">
+            <input type="file" id="inputImage" accept="image/*" class="hidden" onchange="previewImage(event)">
             <div id="uploadPlaceholder">
               <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-slate-400 mb-2"></i>
               <p class="text-xs text-slate-300">คลิกเพื่อเลือกรูปภาพจากเครื่อง</p>
@@ -122,13 +131,6 @@
             </div>
             <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow-md">
           </div>
-        </div>
-
-        <!-- Detail Column -->
-        <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1.5">Detail (รายละเอียด) *</label>
-          <textarea id="inputDetail" rows="3" required placeholder="ใส่คำอธิบาย บันทึก หรือรายละเอียดงาน..."
-            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"></textarea>
         </div>
 
         <!-- Buttons -->
@@ -149,7 +151,6 @@
   </div>
 
   <script>
-    // --- IndexedDB Configuration (เก็บรูปภาพได้ไม่จำกัดพื้นที่เบราว์เซอร์) ---
     const DB_NAME = "MediaLogDB";
     const DB_VERSION = 1;
     const STORE_NAME = "records";
@@ -190,6 +191,15 @@
       });
     }
 
+    async function updateRecordInDB(record) {
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.put(record);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
     async function deleteRecordFromDB(id) {
       return new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, "readwrite");
@@ -199,7 +209,6 @@
       });
     }
 
-    // --- State & DOM ---
     let recordsData = [];
     let currentBase64Image = null;
 
@@ -212,7 +221,6 @@
 
     async function loadData() {
       recordsData = await getAllRecords();
-      // เรียงลำดับจากวันที่ล่าสุดขึ้นก่อน
       recordsData.sort((a, b) => new Date(b.date) - new Date(a.date));
       renderTable();
     }
@@ -240,14 +248,18 @@
       emptyState.classList.add("hidden");
       tbody.innerHTML = filtered.map(item => `
         <tr class="hover:bg-slate-800/40 transition group">
-          <!-- Date -->
+          <!-- 1. DATE -->
           <td class="py-4 px-6 align-top whitespace-nowrap text-slate-300 font-medium">
             <div class="flex items-center gap-2">
               <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
               ${formatDate(item.date)}
             </div>
           </td>
-          <!-- Image -->
+          <!-- 2. DETAIL -->
+          <td class="py-4 px-6 align-top text-slate-200">
+            <p class="whitespace-pre-line leading-relaxed">${escapeHtml(item.detail)}</p>
+          </td>
+          <!-- 3. IMAGE -->
           <td class="py-4 px-6 align-top">
             <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 cursor-pointer relative group/img shadow-sm"
                  onclick="openViewer('${item.image}', '${escapeHtml(item.detail)}')">
@@ -257,15 +269,16 @@
               </div>
             </div>
           </td>
-          <!-- Detail -->
-          <td class="py-4 px-6 align-top text-slate-200">
-            <p class="whitespace-pre-line leading-relaxed">${escapeHtml(item.detail)}</p>
-          </td>
-          <!-- Action -->
-          <td class="py-4 px-6 align-top text-right">
-            <button onclick="handleDelete(${item.id})" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="ลบรายการ">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+          <!-- 4. ACTION (แก้ไข & ลบ) -->
+          <td class="py-4 px-6 align-top text-right whitespace-nowrap">
+            <div class="flex items-center justify-end gap-1">
+              <button onclick="handleEdit(${item.id})" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition" title="แก้ไขรายการ">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="handleDelete(${item.id})" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="ลบรายการ">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `).join("");
@@ -273,7 +286,6 @@
       lucide.createIcons();
     }
 
-    // --- Helpers ---
     function previewImage(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -289,32 +301,78 @@
       reader.readAsDataURL(file);
     }
 
+    function openCreateModal() {
+      document.getElementById("recordForm").reset();
+      document.getElementById("editId").value = "";
+      currentBase64Image = null;
+      document.getElementById("imagePreview").classList.add("hidden");
+      document.getElementById("uploadPlaceholder").classList.remove("hidden");
+      document.getElementById("inputDate").valueAsDate = new Date();
+      document.getElementById("modalTitle").innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i> เพิ่มบันทึกใหม่';
+      document.getElementById("imageNotice").innerText = "*";
+      document.getElementById("inputImage").required = true;
+      toggleModal(true);
+      lucide.createIcons();
+    }
+
+    function handleEdit(id) {
+      const item = recordsData.find(r => r.id === id);
+      if (!item) return;
+
+      document.getElementById("editId").value = item.id;
+      document.getElementById("inputDate").value = item.date;
+      document.getElementById("inputDetail").value = item.detail;
+      currentBase64Image = item.image;
+
+      // แสดงรูปเดิมที่มีอยู่
+      const img = document.getElementById("imagePreview");
+      img.src = item.image;
+      img.classList.remove("hidden");
+      document.getElementById("uploadPlaceholder").classList.add("hidden");
+
+      // ไม่บังคับให้อัปรูปใหม่ถ้าต้องการใช้รูปเดิม
+      document.getElementById("inputImage").required = false;
+      document.getElementById("imageNotice").innerText = "(เลือกรูปใหม่เพื่อเปลี่ยน หรือปล่อยว่างเพื่อใช้รูปเดิม)";
+      document.getElementById("modalTitle").innerHTML = '<i data-lucide="pencil" class="w-5 h-5 text-amber-400"></i> แก้ไขบันทึก';
+      
+      toggleModal(true);
+      lucide.createIcons();
+    }
+
     async function handleFormSubmit(e) {
       e.preventDefault();
+      const editId = document.getElementById("editId").value;
+
       if (!currentBase64Image) {
-        alert("กรุณาเลือกรูปภาพก่อนบันทึก");
+        alert("กรุณาเลือกรูปภาพ");
         return;
       }
 
       const date = document.getElementById("inputDate").value;
       const detail = document.getElementById("inputDetail").value.trim();
 
-      const newRecord = {
-        date,
-        detail,
-        image: currentBase64Image,
-        createdAt: new Date().toISOString()
-      };
+      if (editId) {
+        // อัปเดตรายการเดิม
+        const record = {
+          id: Number(editId),
+          date,
+          detail,
+          image: currentBase64Image,
+          updatedAt: new Date().toISOString()
+        };
+        await updateRecordInDB(record);
+      } else {
+        // เพิ่มรายการใหม่
+        const newRecord = {
+          date,
+          detail,
+          image: currentBase64Image,
+          createdAt: new Date().toISOString()
+        };
+        await addRecordToDB(newRecord);
+      }
 
-      await addRecordToDB(newRecord);
       await loadData();
-
-      // Reset
-      e.target.reset();
-      currentBase64Image = null;
-      document.getElementById("imagePreview").classList.add("hidden");
-      document.getElementById("uploadPlaceholder").classList.remove("hidden");
-      document.getElementById("inputDate").valueAsDate = new Date();
       toggleModal(false);
     }
 
