@@ -11,26 +11,48 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Prompt', sans-serif; }
+    /* ปรับแต่ง Scrollbar ให้เข้ากับธีมมืด */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-16">
 
   <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center space-x-3">
         <div class="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
           <i data-lucide="image-plus" class="w-6 h-6"></i>
         </div>
         <div>
           <h1 class="text-xl font-bold tracking-wide">Photo & Log Dashboard</h1>
-          <p class="text-xs text-slate-400">บันทึกวันที่ รายละเอียด และรูปภาพ</p>
+          <p class="text-xs text-slate-400">บันทึกวันที่ รายละเอียด และรูปภาพ (Auto-Compress)</p>
         </div>
       </div>
-      <button onclick="openCreateModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium transition shadow-lg shadow-blue-600/30 active:scale-95">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-        <span>เพิ่มรายการใหม่</span>
-      </button>
+
+      <div class="flex items-center gap-2">
+        <!-- ปุ่มสำรองข้อมูล (Export / Import) -->
+        <button onclick="exportData()" title="สำรองข้อมูลทั้งหมดเป็นไฟล์ JSON"
+          class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition active:scale-95">
+          <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden sm:inline">สำรองข้อมูล</span>
+        </button>
+
+        <button onclick="document.getElementById('importFile').click()" title="นำเข้าข้อมูลจากไฟล์สำรอง"
+          class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition active:scale-95">
+          <i data-lucide="upload" class="w-4 h-4 text-amber-400"></i>
+          <span class="hidden sm:inline">กู้คืน</span>
+        </button>
+        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+
+        <button onclick="openCreateModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30 active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>เพิ่มรายการใหม่</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -40,7 +62,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
         <div>
-          <p class="text-xs text-slate-400">รายการทั้งหมด</p>
+          <p class="text-xs text-slate-400">รายการที่แสดง / ทั้งหมด</p>
           <p id="totalCount" class="text-2xl font-bold text-white mt-1">0</p>
         </div>
         <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
@@ -68,9 +90,9 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-700/80 bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <th class="py-4 px-6 w-40">DATE (วันที่)</th>
+              <th class="py-4 px-6 w-44">DATE (วันที่)</th>
               <th class="py-4 px-6">DETAIL (รายละเอียด)</th>
-              <th class="py-4 px-6 w-44">IMAGE (รูปภาพ)</th>
+              <th class="py-4 px-6 w-40">IMAGE (รูปภาพ)</th>
               <th class="py-4 px-6 text-right w-28">จัดการ</th>
             </tr>
           </thead>
@@ -90,8 +112,8 @@
   </main>
 
   <!-- Add / Edit Item Modal -->
-  <div id="formModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative">
+  <div id="formModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative animate-fade-in">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
         <h3 id="modalTitle" class="text-lg font-bold text-slate-100 flex items-center gap-2">
           <i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i>
@@ -121,22 +143,29 @@
 
         <!-- Image -->
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1.5">IMAGE (รูปภาพ) <span id="imageNotice" class="text-[10px] text-slate-500 font-normal"></span></label>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">
+            IMAGE (รูปภาพ) <span id="imageNotice" class="text-[11px] text-slate-400 font-normal"></span>
+          </label>
           <div class="border-2 border-dashed border-slate-700 hover:border-blue-500/70 rounded-xl p-4 text-center cursor-pointer transition relative bg-slate-950/50" onclick="document.getElementById('inputImage').click()">
-            <input type="file" id="inputImage" accept="image/*" class="hidden" onchange="previewImage(event)">
+            <input type="file" id="inputImage" accept="image/*" class="hidden" onchange="previewAndCompressImage(event)">
             <div id="uploadPlaceholder">
               <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-slate-400 mb-2"></i>
-              <p class="text-xs text-slate-300">คลิกเพื่อเลือกรูปภาพจากเครื่อง</p>
-              <p class="text-[10px] text-slate-500 mt-1">PNG, JPG, WebP รองรับทั้งหมด</p>
+              <p class="text-xs text-slate-300">คลิกเพื่อเลือกรูปภาพจากเครื่อง (ระบบบีบอัดให้อัตโนมัติ)</p>
+              <p class="text-[10px] text-slate-500 mt-1">ไม่บังคับใส่รูปก็ได้ (หากมีรูปจะโหลดเร็วและประหยัดพื้นที่)</p>
             </div>
             <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow-md">
+          </div>
+          <div id="removeImageBtnWrapper" class="hidden text-right mt-1.5">
+            <button type="button" onclick="removeSelectedImage()" class="text-xs text-rose-400 hover:text-rose-300">
+              × ลบรูปภาพนี้ออก
+            </button>
           </div>
         </div>
 
         <!-- Buttons -->
         <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
           <button type="button" onclick="toggleModal(false)" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition">ยกเลิก</button>
-          <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30">บันทึก</button>
+          <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30">บันทึกข้อมูล</button>
         </div>
       </form>
     </div>
@@ -144,10 +173,19 @@
 
   <!-- Fullscreen Image Viewer Modal -->
   <div id="viewerModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 hidden" onclick="toggleViewer(false)">
-    <div class="relative max-w-4xl max-h-[90vh]">
-      <img id="viewerImage" src="" class="max-w-full max-h-[85vh] rounded-xl object-contain mx-auto shadow-2xl">
-      <p id="viewerCaption" class="text-center text-sm text-slate-300 mt-3"></p>
+    <div class="relative max-w-4xl max-h-[90vh] text-center" onclick="event.stopPropagation()">
+      <button onclick="toggleViewer(false)" class="absolute -top-10 right-0 text-slate-300 hover:text-white flex items-center gap-1 text-sm">
+        <i data-lucide="x" class="w-5 h-5"></i> ปิดหน้าต่าง (ESC)
+      </button>
+      <img id="viewerImage" src="" class="max-w-full max-h-[80vh] rounded-xl object-contain mx-auto shadow-2xl border border-slate-800">
+      <p id="viewerCaption" class="text-center text-sm text-slate-200 mt-3 bg-slate-900/80 px-4 py-2 rounded-lg inline-block max-w-2xl"></p>
     </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+    <span id="toastMsg">บันทึกสำเร็จ</span>
   </div>
 
   <script>
@@ -156,6 +194,7 @@
     const STORE_NAME = "records";
     let db;
 
+    // 1. ระบบฐานข้อมูล IndexedDB
     function initDB() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -209,19 +248,36 @@
       });
     }
 
+    // ตัวแปรหลัก
     let recordsData = [];
     let currentBase64Image = null;
 
+    // ตั้งค่าวันที่ปัจจุบันแบบ Local Timezone (ไม่เพี้ยนข้ามวัน)
+    function setTodayDateInput() {
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(now - offset)).toISOString().slice(0, 10);
+      document.getElementById("inputDate").value = localISOTime;
+    }
+
     window.addEventListener("DOMContentLoaded", async () => {
-      document.getElementById("inputDate").valueAsDate = new Date();
+      setTodayDateInput();
       await initDB();
       await loadData();
       lucide.createIcons();
     });
 
+    // รองรับปุ่ม ESC เพื่อปิด Modal
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        toggleModal(false);
+        toggleViewer(false);
+      }
+    });
+
     async function loadData() {
       recordsData = await getAllRecords();
-      recordsData.sort((a, b) => new Date(b.date) - new Date(a.date));
+      recordsData.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
       renderTable();
     }
 
@@ -237,7 +293,7 @@
         return matchSearch && matchDate;
       });
 
-      document.getElementById("totalCount").innerText = filtered.length;
+      document.getElementById("totalCount").innerText = `${filtered.length} / ${recordsData.length}`;
 
       if (filtered.length === 0) {
         tbody.innerHTML = "";
@@ -251,8 +307,8 @@
           <!-- 1. DATE -->
           <td class="py-4 px-6 align-top whitespace-nowrap text-slate-300 font-medium">
             <div class="flex items-center gap-2">
-              <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
-              ${formatDate(item.date)}
+              <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+              ${formatThaiDate(item.date)}
             </div>
           </td>
           <!-- 2. DETAIL -->
@@ -261,15 +317,22 @@
           </td>
           <!-- 3. IMAGE -->
           <td class="py-4 px-6 align-top">
-            <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 cursor-pointer relative group/img shadow-sm"
-                 onclick="openViewer('${item.image}', '${escapeHtml(item.detail)}')">
-              <img src="${item.image}" class="w-full h-full object-cover group-hover/img:scale-105 transition duration-300">
-              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition">
-                <i data-lucide="maximize-2" class="w-5 h-5 text-white"></i>
+            ${item.image ? `
+              <div onclick="openViewerById(${item.id})"
+                   class="w-24 h-24 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 cursor-pointer relative group/img shadow-sm">
+                <img src="${item.image}" class="w-full h-full object-cover group-hover/img:scale-105 transition duration-300">
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition">
+                  <i data-lucide="maximize-2" class="w-5 h-5 text-white"></i>
+                </div>
               </div>
-            </div>
+            ` : `
+              <div class="w-24 h-24 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col items-center justify-center text-slate-600 text-xs">
+                <i data-lucide="image-off" class="w-5 h-5 mb-1 opacity-50"></i>
+                <span>ไม่มีรูป</span>
+              </div>
+            `}
           </td>
-          <!-- 4. ACTION (แก้ไข & ลบ) -->
+          <!-- 4. ACTION -->
           <td class="py-4 px-6 align-top text-right whitespace-nowrap">
             <div class="flex items-center justify-end gap-1">
               <button onclick="handleEdit(${item.id})" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition" title="แก้ไขรายการ">
@@ -286,31 +349,59 @@
       lucide.createIcons();
     }
 
-    function previewImage(e) {
+    // 2. ระบบบีบอัดรูปภาพอัตโนมัติ (ลดขนาดไฟล์ 80-90% แต่ภาพยังคมชัด)
+    function previewAndCompressImage(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = (event) => {
-        currentBase64Image = event.target.result;
-        const img = document.getElementById("imagePreview");
-        img.src = currentBase64Image;
-        img.classList.remove("hidden");
-        document.getElementById("uploadPlaceholder").classList.add("hidden");
+        const imgObj = new Image();
+        imgObj.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1280; // ความกว้างสูงสุด 1280px (คมชัดระดับ HD)
+          let width = imgObj.width;
+          let height = imgObj.height;
+
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(imgObj, 0, 0, width, height);
+
+          // บีบอัดเป็น JPEG คุณภาพ 80%
+          currentBase64Image = canvas.toDataURL("image/jpeg", 0.8);
+
+          const preview = document.getElementById("imagePreview");
+          preview.src = currentBase64Image;
+          preview.classList.remove("hidden");
+          document.getElementById("uploadPlaceholder").classList.add("hidden");
+          document.getElementById("removeImageBtnWrapper").classList.remove("hidden");
+        };
+        imgObj.src = event.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    function removeSelectedImage() {
+      currentBase64Image = null;
+      document.getElementById("inputImage").value = "";
+      document.getElementById("imagePreview").classList.add("hidden");
+      document.getElementById("uploadPlaceholder").classList.remove("hidden");
+      document.getElementById("removeImageBtnWrapper").classList.add("hidden");
     }
 
     function openCreateModal() {
       document.getElementById("recordForm").reset();
       document.getElementById("editId").value = "";
-      currentBase64Image = null;
-      document.getElementById("imagePreview").classList.add("hidden");
-      document.getElementById("uploadPlaceholder").classList.remove("hidden");
-      document.getElementById("inputDate").valueAsDate = new Date();
+      removeSelectedImage();
+      setTodayDateInput();
       document.getElementById("modalTitle").innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i> เพิ่มบันทึกใหม่';
-      document.getElementById("imageNotice").innerText = "*";
-      document.getElementById("inputImage").required = true;
+      document.getElementById("imageNotice").innerText = "(ไม่บังคับ)";
       toggleModal(true);
       lucide.createIcons();
     }
@@ -322,19 +413,21 @@
       document.getElementById("editId").value = item.id;
       document.getElementById("inputDate").value = item.date;
       document.getElementById("inputDetail").value = item.detail;
-      currentBase64Image = item.image;
+      currentBase64Image = item.image || null;
 
-      // แสดงรูปเดิมที่มีอยู่
-      const img = document.getElementById("imagePreview");
-      img.src = item.image;
-      img.classList.remove("hidden");
-      document.getElementById("uploadPlaceholder").classList.add("hidden");
+      if (currentBase64Image) {
+        const img = document.getElementById("imagePreview");
+        img.src = currentBase64Image;
+        img.classList.remove("hidden");
+        document.getElementById("uploadPlaceholder").classList.add("hidden");
+        document.getElementById("removeImageBtnWrapper").classList.remove("hidden");
+      } else {
+        removeSelectedImage();
+      }
 
-      // ไม่บังคับให้อัปรูปใหม่ถ้าต้องการใช้รูปเดิม
-      document.getElementById("inputImage").required = false;
-      document.getElementById("imageNotice").innerText = "(เลือกรูปใหม่เพื่อเปลี่ยน หรือปล่อยว่างเพื่อใช้รูปเดิม)";
+      document.getElementById("imageNotice").innerText = "(คลิกที่รูปเพื่อเปลี่ยนใหม่)";
       document.getElementById("modalTitle").innerHTML = '<i data-lucide="pencil" class="w-5 h-5 text-amber-400"></i> แก้ไขบันทึก';
-      
+
       toggleModal(true);
       lucide.createIcons();
     }
@@ -342,17 +435,10 @@
     async function handleFormSubmit(e) {
       e.preventDefault();
       const editId = document.getElementById("editId").value;
-
-      if (!currentBase64Image) {
-        alert("กรุณาเลือกรูปภาพ");
-        return;
-      }
-
       const date = document.getElementById("inputDate").value;
       const detail = document.getElementById("inputDetail").value.trim();
 
       if (editId) {
-        // อัปเดตรายการเดิม
         const record = {
           id: Number(editId),
           date,
@@ -361,8 +447,8 @@
           updatedAt: new Date().toISOString()
         };
         await updateRecordInDB(record);
+        showToast("อัปเดตข้อมูลเรียบร้อยแล้ว");
       } else {
-        // เพิ่มรายการใหม่
         const newRecord = {
           date,
           detail,
@@ -370,6 +456,7 @@
           createdAt: new Date().toISOString()
         };
         await addRecordToDB(newRecord);
+        showToast("เพิ่มบันทึกใหม่เรียบร้อยแล้ว");
       }
 
       await loadData();
@@ -380,22 +467,25 @@
       if (confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) {
         await deleteRecordFromDB(id);
         await loadData();
+        showToast("ลบรายการเรียบร้อยแล้ว");
       }
     }
 
-    function toggleModal(show) {
-      const modal = document.getElementById("formModal");
-      modal.classList.toggle("hidden", !show);
-    }
-
-    function openViewer(src, caption) {
-      document.getElementById("viewerImage").src = src;
-      document.getElementById("viewerCaption").innerText = caption;
+    // 3. เปิดดูรูปภาพเต็มจออย่างปลอดภัย (ดึงจาก ID แทนการยัด Base64 ลง HTML)
+    function openViewerById(id) {
+      const item = recordsData.find(r => r.id === id);
+      if (!item || !item.image) return;
+      document.getElementById("viewerImage").src = item.image;
+      document.getElementById("viewerCaption").innerText = `[${formatThaiDate(item.date)}] ${item.detail}`;
       document.getElementById("viewerModal").classList.remove("hidden");
     }
 
     function toggleViewer(show) {
       document.getElementById("viewerModal").classList.toggle("hidden", !show);
+    }
+
+    function toggleModal(show) {
+      document.getElementById("formModal").classList.toggle("hidden", !show);
     }
 
     function clearFilter() {
@@ -404,16 +494,70 @@
       renderTable();
     }
 
-    function formatDate(dateStr) {
+    // แปลงวันที่เป็นรูปแบบไทย (dd/mm/พ.ศ.)
+    function formatThaiDate(dateStr) {
       if (!dateStr) return "-";
       const [y, m, d] = dateStr.split("-");
-      return `${d}/${m}/${y}`;
+      const thaiYear = parseInt(y, 10) + 543;
+      return `${d}/${m}/${thaiYear}`;
     }
 
     function escapeHtml(text) {
       return text.replace(/[&<>"']/g, function(m) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
+    }
+
+    // 4. ระบบ Export / Import สำรองและกู้คืนข้อมูล
+    function exportData() {
+      if (recordsData.length === 0) {
+        alert("ยังไม่มีข้อมูลสำหรับสำรองครับ");
+        return;
+      }
+      const dataStr = JSON.stringify(recordsData, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `photo-log-backup-${today}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("ดาวน์โหลดไฟล์สำรองข้อมูลสำเร็จ!");
+    }
+
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (!Array.isArray(imported)) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
+
+          for (const item of imported) {
+            const { id, ...cleanRecord } = item; // ตัด id เก่าออกเพื่อให้ autoIncrement ใหม่ไม่ชนกัน
+            await addRecordToDB(cleanRecord);
+          }
+
+          await loadData();
+          showToast(`กู้คืนข้อมูลสำเร็จ ${imported.length} รายการ!`);
+        } catch (err) {
+          alert("ไม่สามารถนำเข้าไฟล์ได้: " + err.message);
+        }
+        e.target.value = "";
+      };
+      reader.readAsText(file);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastMsg").innerText = msg;
+      toast.classList.remove("translate-y-20", "opacity-0");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0");
+      }, 3000);
     }
   </script>
 </body>
