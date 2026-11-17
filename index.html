@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Photo Journal & Record Dashboard</title>
+  <title>Photo & File Journal Dashboard</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -11,7 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Prompt', sans-serif; }
-    /* ปรับแต่ง Scrollbar ให้เข้ากับธีมมืด */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -25,28 +24,25 @@
     <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center space-x-3">
         <div class="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
-          <i data-lucide="image-plus" class="w-6 h-6"></i>
+          <i data-lucide="folder-plus" class="w-6 h-6"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-wide">Photo & Log Dashboard</h1>
-          <p class="text-xs text-slate-400">บันทึกวันที่ รายละเอียด และรูปภาพ (Auto-Compress)</p>
+          <h1 class="text-xl font-bold tracking-wide">Photo & File Log Dashboard</h1>
+          <p class="text-xs text-slate-400">บันทึกวันที่ รายละเอียด รูปภาพ และเอกสาร (PDF, Word, Excel ฯลฯ)</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- ปุ่มสำรองข้อมูล (Export / Import) -->
-        <button onclick="exportData()" title="สำรองข้อมูลทั้งหมดเป็นไฟล์ JSON"
-          class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition active:scale-95">
+        <!-- Backup / Restore Buttons -->
+        <button onclick="exportBackup()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition" title="ส่งออกไฟล์สำรองข้อมูล (.json)">
           <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
           <span class="hidden sm:inline">สำรองข้อมูล</span>
         </button>
-
-        <button onclick="document.getElementById('importFile').click()" title="นำเข้าข้อมูลจากไฟล์สำรอง"
-          class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition active:scale-95">
+        <button onclick="document.getElementById('importFile').click()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-medium transition" title="กู้คืนข้อมูลจากไฟล์ (.json)">
           <i data-lucide="upload" class="w-4 h-4 text-amber-400"></i>
           <span class="hidden sm:inline">กู้คืน</span>
         </button>
-        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importBackup(event)">
 
         <button onclick="openCreateModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30 active:scale-95">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -63,7 +59,9 @@
       <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
         <div>
           <p class="text-xs text-slate-400">รายการที่แสดง / ทั้งหมด</p>
-          <p id="totalCount" class="text-2xl font-bold text-white mt-1">0</p>
+          <p class="text-2xl font-bold text-white mt-1">
+            <span id="filteredCount">0</span> <span class="text-sm font-normal text-slate-400">/ <span id="totalCount">0</span></span>
+          </p>
         </div>
         <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
           <i data-lucide="layers" class="w-6 h-6"></i>
@@ -73,7 +71,7 @@
       <div class="md:col-span-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center">
         <div class="relative w-full">
           <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3.5"></i>
-          <input type="text" id="searchInput" placeholder="ค้นหาจากรายละเอียด..." oninput="renderTable()"
+          <input type="text" id="searchInput" placeholder="ค้นหาจากรายละเอียด หรือชื่อไฟล์..." oninput="renderTable()"
             class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
         </div>
         <input type="date" id="filterDate" onchange="renderTable()"
@@ -90,9 +88,9 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-700/80 bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <th class="py-4 px-6 w-44">DATE (วันที่)</th>
+              <th class="py-4 px-6 w-40">DATE (วันที่)</th>
               <th class="py-4 px-6">DETAIL (รายละเอียด)</th>
-              <th class="py-4 px-6 w-40">IMAGE (รูปภาพ)</th>
+              <th class="py-4 px-6 w-56">ATTACHMENT (ไฟล์แนบ)</th>
               <th class="py-4 px-6 text-right w-28">จัดการ</th>
             </tr>
           </thead>
@@ -105,15 +103,15 @@
       <!-- Empty State -->
       <div id="emptyState" class="hidden py-16 text-center text-slate-500">
         <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
-        <p class="text-base font-medium">ยังไม่มีข้อมูลบันทึก</p>
-        <p class="text-xs mt-1">กดปุ่ม "เพิ่มรายการใหม่" เพื่อเริ่มบันทึกรูปและรายละเอียด</p>
+        <p class="text-base font-medium">ไม่พบข้อมูลบันทึก</p>
+        <p class="text-xs mt-1">กดปุ่ม "เพิ่มรายการใหม่" เพื่อเริ่มบันทึกรูปภาพ ไฟล์เอกสาร และรายละเอียด</p>
       </div>
     </div>
   </main>
 
   <!-- Add / Edit Item Modal -->
   <div id="formModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative animate-fade-in">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative max-h-[92vh] overflow-y-auto">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
         <h3 id="modalTitle" class="text-lg font-bold text-slate-100 flex items-center gap-2">
           <i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i>
@@ -141,51 +139,66 @@
             class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"></textarea>
         </div>
 
-        <!-- Image -->
+        <!-- File / Image Attachment -->
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1.5">
-            IMAGE (รูปภาพ) <span id="imageNotice" class="text-[11px] text-slate-400 font-normal"></span>
-          </label>
-          <div class="border-2 border-dashed border-slate-700 hover:border-blue-500/70 rounded-xl p-4 text-center cursor-pointer transition relative bg-slate-950/50" onclick="document.getElementById('inputImage').click()">
-            <input type="file" id="inputImage" accept="image/*" class="hidden" onchange="previewAndCompressImage(event)">
-            <div id="uploadPlaceholder">
-              <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-slate-400 mb-2"></i>
-              <p class="text-xs text-slate-300">คลิกเพื่อเลือกรูปภาพจากเครื่อง (ระบบบีบอัดให้อัตโนมัติ)</p>
-              <p class="text-[10px] text-slate-500 mt-1">ไม่บังคับใส่รูปก็ได้ (หากมีรูปจะโหลดเร็วและประหยัดพื้นที่)</p>
-            </div>
-            <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow-md">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-medium text-slate-400">ATTACHMENT (แนบรูปภาพ หรือไฟล์เอกสาร) <span id="fileNotice" class="text-[10px] text-slate-500 font-normal">(ไม่บังคับ)</span></label>
+            <button type="button" id="removeFileBtn" onclick="clearSelectedFile()" class="hidden text-xs text-rose-400 hover:text-rose-300">ลบไฟล์แนบ</button>
           </div>
-          <div id="removeImageBtnWrapper" class="hidden text-right mt-1.5">
-            <button type="button" onclick="removeSelectedImage()" class="text-xs text-rose-400 hover:text-rose-300">
-              × ลบรูปภาพนี้ออก
-            </button>
+          
+          <div class="border-2 border-dashed border-slate-700 hover:border-blue-500/70 rounded-xl p-4 text-center cursor-pointer transition relative bg-slate-950/50" onclick="document.getElementById('inputFile').click()">
+            <!-- รับได้ทุกไฟล์ -->
+            <input type="file" id="inputFile" accept="*/*" class="hidden" onchange="handleFileSelect(event)">
+            
+            <div id="uploadPlaceholder">
+              <i data-lucide="file-up" class="w-8 h-8 mx-auto text-slate-400 mb-2"></i>
+              <p class="text-xs text-slate-300">คลิกเพื่อเลือก รูปภาพ หรือ ไฟล์เอกสาร</p>
+              <p class="text-[10px] text-slate-500 mt-1">รองรับ PDF, Word, Excel, ZIP และรูปภาพทุกชนิด (สูงสุด ~15MB)</p>
+            </div>
+
+            <!-- Image Preview -->
+            <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain shadow-md">
+
+            <!-- Document File Preview -->
+            <div id="docPreview" class="hidden flex items-center justify-center gap-3 py-3 px-4 bg-slate-900 rounded-xl border border-slate-700 max-w-sm mx-auto">
+              <div class="p-2.5 bg-rose-500/10 text-rose-400 rounded-lg">
+                <i data-lucide="file-text" class="w-6 h-6"></i>
+              </div>
+              <div class="text-left overflow-hidden">
+                <p id="docPreviewName" class="text-xs font-medium text-slate-200 truncate">document.pdf</p>
+                <p id="docPreviewSize" class="text-[10px] text-slate-400">0 KB</p>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Buttons -->
         <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
           <button type="button" onclick="toggleModal(false)" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition">ยกเลิก</button>
-          <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30">บันทึกข้อมูล</button>
+          <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30">บันทึก</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Fullscreen Image Viewer Modal -->
-  <div id="viewerModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 hidden" onclick="toggleViewer(false)">
-    <div class="relative max-w-4xl max-h-[90vh] text-center" onclick="event.stopPropagation()">
-      <button onclick="toggleViewer(false)" class="absolute -top-10 right-0 text-slate-300 hover:text-white flex items-center gap-1 text-sm">
-        <i data-lucide="x" class="w-5 h-5"></i> ปิดหน้าต่าง (ESC)
-      </button>
-      <img id="viewerImage" src="" class="max-w-full max-h-[80vh] rounded-xl object-contain mx-auto shadow-2xl border border-slate-800">
-      <p id="viewerCaption" class="text-center text-sm text-slate-200 mt-3 bg-slate-900/80 px-4 py-2 rounded-lg inline-block max-w-2xl"></p>
+  <!-- Fullscreen Image & PDF Viewer Modal -->
+  <div id="viewerModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 hidden" onclick="toggleViewer(false)">
+    <div class="w-full max-w-5xl flex justify-between items-center mb-3 px-2" onclick="event.stopPropagation()">
+      <p id="viewerCaption" class="text-sm text-slate-200 font-medium truncate pr-4"></p>
+      <div class="flex items-center gap-2">
+        <a id="viewerDownloadBtn" href="#" download="file" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> ดาวน์โหลด
+        </a>
+        <button onclick="toggleViewer(false)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-1.5 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
     </div>
-  </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm transform translate-y-20 opacity-0 transition-all duration-300 z-50">
-    <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
-    <span id="toastMsg">บันทึกสำเร็จ</span>
+    <div class="relative w-full max-w-5xl flex-1 flex items-center justify-center overflow-hidden" onclick="event.stopPropagation()">
+      <img id="viewerImage" src="" class="hidden max-w-full max-h-[82vh] rounded-xl object-contain mx-auto shadow-2xl">
+      <iframe id="viewerPdf" src="" class="hidden w-full h-[82vh] rounded-xl bg-white shadow-2xl border border-slate-700"></iframe>
+    </div>
   </div>
 
   <script>
@@ -194,7 +207,6 @@
     const STORE_NAME = "records";
     let db;
 
-    // 1. ระบบฐานข้อมูล IndexedDB
     function initDB() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -248,31 +260,29 @@
       });
     }
 
-    // ตัวแปรหลัก
     let recordsData = [];
-    let currentBase64Image = null;
+    // เก็บข้อมูลไฟล์ปัจจุบัน { dataUrl, fileName, fileType, fileSize }
+    let currentFileObj = null;
 
-    // ตั้งค่าวันที่ปัจจุบันแบบ Local Timezone (ไม่เพี้ยนข้ามวัน)
-    function setTodayDateInput() {
+    function getTodayLocalStr() {
       const now = new Date();
       const offset = now.getTimezoneOffset() * 60000;
-      const localISOTime = (new Date(now - offset)).toISOString().slice(0, 10);
-      document.getElementById("inputDate").value = localISOTime;
+      return new Date(now.getTime() - offset).toISOString().split('T')[0];
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
-      setTodayDateInput();
+      document.getElementById("inputDate").value = getTodayLocalStr();
       await initDB();
       await loadData();
       lucide.createIcons();
-    });
-
-    // รองรับปุ่ม ESC เพื่อปิด Modal
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        toggleModal(false);
-        toggleViewer(false);
-      }
     });
 
     async function loadData() {
@@ -288,12 +298,14 @@
       const filterDate = document.getElementById("filterDate").value;
 
       const filtered = recordsData.filter(item => {
-        const matchSearch = item.detail.toLowerCase().includes(searchTerm);
+        const matchDetail = (item.detail || "").toLowerCase().includes(searchTerm);
+        const matchFile = (item.fileName || "").toLowerCase().includes(searchTerm);
         const matchDate = filterDate ? item.date === filterDate : true;
-        return matchSearch && matchDate;
+        return (matchDetail || matchFile) && matchDate;
       });
 
-      document.getElementById("totalCount").innerText = `${filtered.length} / ${recordsData.length}`;
+      document.getElementById("filteredCount").innerText = filtered.length;
+      document.getElementById("totalCount").innerText = recordsData.length;
 
       if (filtered.length === 0) {
         tbody.innerHTML = "";
@@ -302,106 +314,208 @@
       }
 
       emptyState.classList.add("hidden");
-      tbody.innerHTML = filtered.map(item => `
-        <tr class="hover:bg-slate-800/40 transition group">
-          <!-- 1. DATE -->
-          <td class="py-4 px-6 align-top whitespace-nowrap text-slate-300 font-medium">
-            <div class="flex items-center gap-2">
-              <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
-              ${formatThaiDate(item.date)}
-            </div>
-          </td>
-          <!-- 2. DETAIL -->
-          <td class="py-4 px-6 align-top text-slate-200">
-            <p class="whitespace-pre-line leading-relaxed">${escapeHtml(item.detail)}</p>
-          </td>
-          <!-- 3. IMAGE -->
-          <td class="py-4 px-6 align-top">
-            ${item.image ? `
-              <div onclick="openViewerById(${item.id})"
-                   class="w-24 h-24 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 cursor-pointer relative group/img shadow-sm">
-                <img src="${item.image}" class="w-full h-full object-cover group-hover/img:scale-105 transition duration-300">
+      tbody.innerHTML = filtered.map(item => {
+        // รองรับข้อมูลเก่าที่เก็บแค่ item.image ด้วย
+        const fileData = item.fileData || item.image;
+        const fileType = item.fileType || (fileData && fileData.startsWith('data:image/') ? 'image/jpeg' : '');
+        const fileName = item.fileName || (fileType.startsWith('image/') ? 'รูปภาพแนบ.jpg' : 'เอกสารแนบ');
+
+        let attachmentHtml = `<span class="text-xs text-slate-600 italic">ไม่มีไฟล์แนบ</span>`;
+
+        if (fileData) {
+          if (fileType.startsWith('image/')) {
+            // แสดงผลกรณีเป็นรูปภาพ
+            attachmentHtml = `
+              <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 cursor-pointer relative group/img shadow-sm"
+                   onclick="openViewerById(${item.id})">
+                <img src="${fileData}" class="w-full h-full object-cover group-hover/img:scale-105 transition duration-300">
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition">
                   <i data-lucide="maximize-2" class="w-5 h-5 text-white"></i>
                 </div>
+              </div>`;
+          } else if (fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
+            // แสดงผลกรณีเป็น PDF (กดเปิดอ่านในหน้าเว็บหรือดาวน์โหลดได้)
+            attachmentHtml = `
+              <div class="flex flex-col gap-1.5 max-w-[210px]">
+                <div onclick="openViewerById(${item.id})" class="flex items-center gap-2.5 p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 cursor-pointer transition group/pdf">
+                  <div class="p-2 bg-rose-500/20 text-rose-400 rounded-lg shrink-0">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                  </div>
+                  <div class="overflow-hidden">
+                    <p class="text-xs font-medium text-rose-200 truncate group-hover/pdf:underline" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</p>
+                    <p class="text-[10px] text-rose-400/80">คลิกเพื่อเปิดอ่าน PDF</p>
+                  </div>
+                </div>
+              </div>`;
+          } else {
+            // แสดงผลกรณีเป็นไฟล์อื่น ๆ (Word, Excel, ZIP ฯลฯ) -> คลิกดาวน์โหลดได้เลย
+            attachmentHtml = `
+              <a href="${fileData}" download="${escapeHtml(fileName)}" class="flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 transition max-w-[210px] group/doc">
+                <div class="p-2 bg-blue-500/20 text-blue-400 rounded-lg shrink-0">
+                  <i data-lucide="file-down" class="w-5 h-5"></i>
+                </div>
+                <div class="overflow-hidden">
+                  <p class="text-xs font-medium text-blue-200 truncate group-hover/doc:underline" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</p>
+                  <p class="text-[10px] text-blue-400/80">คลิกเพื่อดาวน์โหลดไฟล์</p>
+                </div>
+              </a>`;
+          }
+        }
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition group">
+            <td class="py-4 px-6 align-top whitespace-nowrap text-slate-300 font-medium">
+              <div class="flex items-center gap-2">
+                <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
+                ${formatDateThai(item.date)}
               </div>
-            ` : `
-              <div class="w-24 h-24 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col items-center justify-center text-slate-600 text-xs">
-                <i data-lucide="image-off" class="w-5 h-5 mb-1 opacity-50"></i>
-                <span>ไม่มีรูป</span>
+            </td>
+            <td class="py-4 px-6 align-top text-slate-200">
+              <p class="whitespace-pre-line leading-relaxed">${escapeHtml(item.detail)}</p>
+            </td>
+            <td class="py-4 px-6 align-top">
+              ${attachmentHtml}
+            </td>
+            <td class="py-4 px-6 align-top text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1">
+                <button onclick="handleEdit(${item.id})" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition" title="แก้ไขรายการ">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="handleDelete(${item.id})" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="ลบรายการ">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
               </div>
-            `}
-          </td>
-          <!-- 4. ACTION -->
-          <td class="py-4 px-6 align-top text-right whitespace-nowrap">
-            <div class="flex items-center justify-end gap-1">
-              <button onclick="handleEdit(${item.id})" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition" title="แก้ไขรายการ">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </button>
-              <button onclick="handleDelete(${item.id})" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="ลบรายการ">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
+            </td>
+          </tr>
+        `;
+      }).join("");
 
       lucide.createIcons();
     }
 
-    // 2. ระบบบีบอัดรูปภาพอัตโนมัติ (ลดขนาดไฟล์ 80-90% แต่ภาพยังคมชัด)
-    function previewAndCompressImage(e) {
+    // บีบอัดรูปภาพอัตโนมัติ
+    function compressImage(file, maxWidth = 1280, quality = 0.8) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // อ่านไฟล์เอกสารทั่วไปเป็น Base64 DataURL
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleFileSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imgObj = new Image();
-        imgObj.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 1280; // ความกว้างสูงสุด 1280px (คมชัดระดับ HD)
-          let width = imgObj.width;
-          let height = imgObj.height;
+      // จำกัดขนาดไฟล์ไม่เกิน 15MB เพื่อไม่ให้เบราว์เซอร์ค้าง
+      if (file.size > 15 * 1024 * 1024) {
+        alert("ขนาดไฟล์ใหญ่เกินไป (กรุณาเลือกไฟล์ขนาดไม่เกิน 15 MB)");
+        e.target.value = "";
+        return;
+      }
 
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "กำลังประมวลผลไฟล์...";
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(imgObj, 0, 0, width, height);
-
-          // บีบอัดเป็น JPEG คุณภาพ 80%
-          currentBase64Image = canvas.toDataURL("image/jpeg", 0.8);
-
-          const preview = document.getElementById("imagePreview");
-          preview.src = currentBase64Image;
-          preview.classList.remove("hidden");
-          document.getElementById("uploadPlaceholder").classList.add("hidden");
-          document.getElementById("removeImageBtnWrapper").classList.remove("hidden");
-        };
-        imgObj.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+      try {
+        if (file.type.startsWith('image/')) {
+          const compressedUrl = await compressImage(file);
+          currentFileObj = {
+            dataUrl: compressedUrl,
+            fileName: file.name,
+            fileType: 'image/jpeg',
+            fileSize: file.size
+          };
+        } else {
+          const rawDataUrl = await readFileAsDataURL(file);
+          currentFileObj = {
+            dataUrl: rawDataUrl,
+            fileName: file.name,
+            fileType: file.type || 'application/octet-stream',
+            fileSize: file.size
+          };
+        }
+        updateModalAttachmentPreview();
+      } catch (err) {
+        alert("เกิดข้อผิดพลาดในการอ่านไฟล์: " + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "บันทึก";
+      }
     }
 
-    function removeSelectedImage() {
-      currentBase64Image = null;
-      document.getElementById("inputImage").value = "";
-      document.getElementById("imagePreview").classList.add("hidden");
-      document.getElementById("uploadPlaceholder").classList.remove("hidden");
-      document.getElementById("removeImageBtnWrapper").classList.add("hidden");
+    function updateModalAttachmentPreview() {
+      const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+      const imagePreview = document.getElementById("imagePreview");
+      const docPreview = document.getElementById("docPreview");
+      const removeBtn = document.getElementById("removeFileBtn");
+
+      if (!currentFileObj || !currentFileObj.dataUrl) {
+        uploadPlaceholder.classList.remove("hidden");
+        imagePreview.classList.add("hidden");
+        docPreview.classList.add("hidden");
+        removeBtn.classList.add("hidden");
+        return;
+      }
+
+      uploadPlaceholder.classList.add("hidden");
+      removeBtn.classList.remove("hidden");
+
+      if (currentFileObj.fileType.startsWith('image/')) {
+        imagePreview.src = currentFileObj.dataUrl;
+        imagePreview.classList.remove("hidden");
+        docPreview.classList.add("hidden");
+      } else {
+        document.getElementById("docPreviewName").innerText = currentFileObj.fileName || "ไฟล์เอกสาร";
+        document.getElementById("docPreviewSize").innerText = formatBytes(currentFileObj.fileSize) || "ไฟล์แนบ";
+        docPreview.classList.remove("hidden");
+        imagePreview.classList.add("hidden");
+      }
+      lucide.createIcons();
+    }
+
+    function clearSelectedFile() {
+      currentFileObj = null;
+      document.getElementById("inputFile").value = "";
+      updateModalAttachmentPreview();
     }
 
     function openCreateModal() {
       document.getElementById("recordForm").reset();
       document.getElementById("editId").value = "";
-      removeSelectedImage();
-      setTodayDateInput();
+      clearSelectedFile();
+      document.getElementById("inputDate").value = getTodayLocalStr();
       document.getElementById("modalTitle").innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i> เพิ่มบันทึกใหม่';
-      document.getElementById("imageNotice").innerText = "(ไม่บังคับ)";
+      document.getElementById("fileNotice").innerText = "(ไม่บังคับ)";
       toggleModal(true);
       lucide.createIcons();
     }
@@ -413,19 +527,21 @@
       document.getElementById("editId").value = item.id;
       document.getElementById("inputDate").value = item.date;
       document.getElementById("inputDetail").value = item.detail;
-      currentBase64Image = item.image || null;
 
-      if (currentBase64Image) {
-        const img = document.getElementById("imagePreview");
-        img.src = currentBase64Image;
-        img.classList.remove("hidden");
-        document.getElementById("uploadPlaceholder").classList.add("hidden");
-        document.getElementById("removeImageBtnWrapper").classList.remove("hidden");
+      const fileData = item.fileData || item.image;
+      if (fileData) {
+        currentFileObj = {
+          dataUrl: fileData,
+          fileName: item.fileName || (fileData.startsWith('data:image/') ? 'รูปภาพเดิม.jpg' : 'เอกสารเดิม'),
+          fileType: item.fileType || (fileData.startsWith('data:image/') ? 'image/jpeg' : 'application/octet-stream'),
+          fileSize: item.fileSize || 0
+        };
       } else {
-        removeSelectedImage();
+        currentFileObj = null;
       }
 
-      document.getElementById("imageNotice").innerText = "(คลิกที่รูปเพื่อเปลี่ยนใหม่)";
+      updateModalAttachmentPreview();
+      document.getElementById("fileNotice").innerText = "(เลือกไฟล์ใหม่เพื่อเปลี่ยน)";
       document.getElementById("modalTitle").innerHTML = '<i data-lucide="pencil" class="w-5 h-5 text-amber-400"></i> แก้ไขบันทึก';
 
       toggleModal(true);
@@ -438,25 +554,24 @@
       const date = document.getElementById("inputDate").value;
       const detail = document.getElementById("inputDetail").value.trim();
 
+      const recordPayload = {
+        date,
+        detail,
+        fileData: currentFileObj ? currentFileObj.dataUrl : null,
+        fileName: currentFileObj ? currentFileObj.fileName : null,
+        fileType: currentFileObj ? currentFileObj.fileType : null,
+        fileSize: currentFileObj ? currentFileObj.fileSize : 0,
+        // เก็บ field image ไว้ด้วยเพื่อความเข้ากันได้กับข้อมูลเก่า
+        image: (currentFileObj && currentFileObj.fileType.startsWith('image/')) ? currentFileObj.dataUrl : null
+      };
+
       if (editId) {
-        const record = {
-          id: Number(editId),
-          date,
-          detail,
-          image: currentBase64Image,
-          updatedAt: new Date().toISOString()
-        };
-        await updateRecordInDB(record);
-        showToast("อัปเดตข้อมูลเรียบร้อยแล้ว");
+        recordPayload.id = Number(editId);
+        recordPayload.updatedAt = new Date().toISOString();
+        await updateRecordInDB(recordPayload);
       } else {
-        const newRecord = {
-          date,
-          detail,
-          image: currentBase64Image,
-          createdAt: new Date().toISOString()
-        };
-        await addRecordToDB(newRecord);
-        showToast("เพิ่มบันทึกใหม่เรียบร้อยแล้ว");
+        recordPayload.createdAt = new Date().toISOString();
+        await addRecordToDB(recordPayload);
       }
 
       await loadData();
@@ -467,25 +582,55 @@
       if (confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) {
         await deleteRecordFromDB(id);
         await loadData();
-        showToast("ลบรายการเรียบร้อยแล้ว");
       }
-    }
-
-    // 3. เปิดดูรูปภาพเต็มจออย่างปลอดภัย (ดึงจาก ID แทนการยัด Base64 ลง HTML)
-    function openViewerById(id) {
-      const item = recordsData.find(r => r.id === id);
-      if (!item || !item.image) return;
-      document.getElementById("viewerImage").src = item.image;
-      document.getElementById("viewerCaption").innerText = `[${formatThaiDate(item.date)}] ${item.detail}`;
-      document.getElementById("viewerModal").classList.remove("hidden");
-    }
-
-    function toggleViewer(show) {
-      document.getElementById("viewerModal").classList.toggle("hidden", !show);
     }
 
     function toggleModal(show) {
       document.getElementById("formModal").classList.toggle("hidden", !show);
+    }
+
+    // เปิดดูรูปภาพหรือ PDF เต็มจอ
+    function openViewerById(id) {
+      const item = recordsData.find(r => r.id === id);
+      if (!item) return;
+
+      const fileData = item.fileData || item.image;
+      if (!fileData) return;
+
+      const fileType = item.fileType || (fileData.startsWith('data:image/') ? 'image/jpeg' : '');
+      const fileName = item.fileName || 'attachment';
+
+      const imgEl = document.getElementById("viewerImage");
+      const pdfEl = document.getElementById("viewerPdf");
+      const dlBtn = document.getElementById("viewerDownloadBtn");
+
+      dlBtn.href = fileData;
+      dlBtn.download = fileName;
+      document.getElementById("viewerCaption").innerText = `${formatDateThai(item.date)} — ${item.detail}`;
+
+      if (fileType.startsWith('image/')) {
+        imgEl.src = fileData;
+        imgEl.classList.remove("hidden");
+        pdfEl.classList.add("hidden");
+        pdfEl.src = "";
+      } else {
+        pdfEl.src = fileData;
+        pdfEl.classList.remove("hidden");
+        imgEl.classList.add("hidden");
+        imgEl.src = "";
+      }
+
+      document.getElementById("viewerModal").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function toggleViewer(show) {
+      const modal = document.getElementById("viewerModal");
+      modal.classList.toggle("hidden", !show);
+      if (!show) {
+        document.getElementById("viewerPdf").src = "";
+        document.getElementById("viewerImage").src = "";
+      }
     }
 
     function clearFilter() {
@@ -494,8 +639,7 @@
       renderTable();
     }
 
-    // แปลงวันที่เป็นรูปแบบไทย (dd/mm/พ.ศ.)
-    function formatThaiDate(dateStr) {
+    function formatDateThai(dateStr) {
       if (!dateStr) return "-";
       const [y, m, d] = dateStr.split("-");
       const thaiYear = parseInt(y, 10) + 543;
@@ -503,61 +647,48 @@
     }
 
     function escapeHtml(text) {
+      if (!text) return "";
       return text.replace(/[&<>"']/g, function(m) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
     }
 
-    // 4. ระบบ Export / Import สำรองและกู้คืนข้อมูล
-    function exportData() {
-      if (recordsData.length === 0) {
+    // Export & Import JSON Backup
+    async function exportBackup() {
+      const all = await getAllRecords();
+      if (all.length === 0) {
         alert("ยังไม่มีข้อมูลสำหรับสำรองครับ");
         return;
       }
-      const dataStr = JSON.stringify(recordsData, null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(all, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const today = new Date().toISOString().slice(0, 10);
       a.href = url;
-      a.download = `photo-log-backup-${today}.json`;
+      a.download = `photo-file-log-backup-${getTodayLocalStr()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast("ดาวน์โหลดไฟล์สำรองข้อมูลสำเร็จ!");
     }
 
-    function importData(e) {
+    async function importBackup(e) {
       const file = e.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
           const imported = JSON.parse(event.target.result);
           if (!Array.isArray(imported)) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
-
           for (const item of imported) {
-            const { id, ...cleanRecord } = item; // ตัด id เก่าออกเพื่อให้ autoIncrement ใหม่ไม่ชนกัน
-            await addRecordToDB(cleanRecord);
+            delete item.id;
+            await addRecordToDB(item);
           }
-
           await loadData();
-          showToast(`กู้คืนข้อมูลสำเร็จ ${imported.length} รายการ!`);
+          alert(`กู้คืนข้อมูลสำเร็จ ${imported.length} รายการ!`);
         } catch (err) {
-          alert("ไม่สามารถนำเข้าไฟล์ได้: " + err.message);
+          alert("ไม่สามารถกู้คืนข้อมูลได้: " + err.message);
         }
         e.target.value = "";
       };
       reader.readAsText(file);
-    }
-
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      document.getElementById("toastMsg").innerText = msg;
-      toast.classList.remove("translate-y-20", "opacity-0");
-      setTimeout(() => {
-        toast.classList.add("translate-y-20", "opacity-0");
-      }, 3000);
     }
   </script>
 </body>
